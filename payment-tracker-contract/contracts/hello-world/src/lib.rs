@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, String};
+use soroban_sdk::{contract, contractevent, contractimpl, contracttype, Address, Env, String};
 
 #[derive(Clone)]
 #[contracttype]
@@ -8,6 +8,15 @@ pub struct Payment {
     pub recipient: Address,
     pub amount: i128,
     pub status: String,
+}
+
+#[contractevent]
+pub struct PaymentCreated {
+    #[topic]
+    pub payment_id: u64,
+    pub sender: Address,
+    pub recipient: Address,
+    pub amount: i128,
 }
 
 #[contract]
@@ -26,12 +35,20 @@ impl Contract {
 
         let payment = Payment {
             sender: sender.clone(),
-            recipient,
+            recipient: recipient.clone(),
             amount,
             status: String::from_str(&env, "pending"),
         };
 
         env.storage().instance().set(&payment_id, &payment);
+
+        PaymentCreated {
+            payment_id,
+            sender,
+            recipient,
+            amount,
+        }
+        .publish(&env);
     }
 
     pub fn complete_payment(env: Env, payment_id: u64) {

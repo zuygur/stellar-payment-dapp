@@ -1,24 +1,44 @@
 # Stellar Payment dApp
 
-A simple decentralized application built on the Stellar Testnet that allows users to connect their Freighter wallet, view their XLM balance, and send XLM payments to other accounts.
+A decentralized application built on the Stellar Testnet that allows users to connect a Freighter wallet, view their XLM balance, and send payments through a deployed Soroban smart contract that tracks payment status.
 
-This project was built as part of Level 1 of the Rise In Stellar Journey to Mastery program.
+This project was built for the Rise In Stellar Journey to Mastery program (Level 1 - White Belt and Level 2 - Yellow Belt).
 
 ## Features
 
 - Connect and disconnect a Freighter wallet
 - Fetch and display the connected wallet's XLM balance
-- Send XLM payments to any Stellar Testnet address
-- Show clear success or failure feedback for each transaction, including the transaction hash
+- Send XLM payments through a deployed Soroban smart contract
+- Each payment is recorded on-chain with a unique payment ID and a status (`pending` / `completed`)
+- Clear success or failure feedback for each transaction, including the payment ID and transaction hash
+- Handles multiple distinct error cases: invalid recipient address, invalid amount, and network/contract failures
 
 ## Tech Stack
 
 - React (Vite)
 - @stellar/freighter-api
 - @stellar/stellar-sdk
-- Stellar Testnet / Horizon
+- Soroban (Stellar smart contracts, written in Rust)
+- Stellar Testnet / Horizon / Soroban RPC
+
+## Smart Contract
+
+The `payment-tracker-contract` folder contains a Soroban smart contract with three functions:
+
+- `create_payment` — creates a new payment record with sender, recipient, amount, and a `pending` status
+- `complete_payment` — updates a payment record's status to `completed`
+- `get_payment` — retrieves a payment record by its ID
+
+**Deployed Contract ID (Testnet):**
+
+```bash
+CA64JOQVE6HTDF4KE3JSK7OUZBEKTPIC5TQH52PDAM5DHYKBKXKEXE7Q
+```
+You can verify the contract on [Stellar Expert (Testnet)](https://stellar.expert/explorer/testnet/contract/CA64JOQVE6HTDF4KE3JSK7OUZBEKTPIC5TQH52PDAM5DHYKBKXKEXE7Q).
 
 ## Setup Instructions
+
+### Frontend
 
 1. Clone this repository:
 
@@ -48,6 +68,36 @@ npm run dev
 
 6. Make sure the [Freighter wallet extension](https://www.freighter.app/) is installed and set to **Testnet**.
 
+### Smart Contract (optional — already deployed)
+
+If you want to build or redeploy the contract yourself:
+
+1. Install [Rust](https://www.rust-lang.org/tools/install) and the [Stellar CLI](https://developers.stellar.org/docs/tools/developer-tools#stellar-cli).
+
+2. Add the WASM build target:
+
+```bash
+rustup target add wasm32v1-none
+```
+
+3. Navigate into the contract folder:
+
+```bash
+cd payment-tracker-contract
+```
+
+4. Build the contract:
+
+```bash
+stellar contract build
+```
+
+5. Deploy to testnet:
+
+```bash
+stellar contract deploy --wasm target/wasm32v1-none/release/hello_world.wasm --source <your-identity> --network testnet
+```
+
 ## Screenshots
 
 ### Wallet Connected State and Balance Display
@@ -62,3 +112,4 @@ npm run dev
 ## Notes
 
 - The recipient account must already exist (funded) on the Testnet for a payment to succeed. New accounts can be funded using [Friendbot](https://friendbot.stellar.org/).
+- Contract calls require higher network fees than simple payments, since they involve on-chain computation.

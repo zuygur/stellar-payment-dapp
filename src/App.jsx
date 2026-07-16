@@ -1,15 +1,28 @@
-import { useState } from 'react'
-import { isConnected, requestAccess, signTransaction } from '@stellar/freighter-api'
+import { useState, useEffect } from 'react'
 import { Horizon, TransactionBuilder, Networks, Contract, nativeToScVal, Address, rpc} from '@stellar/stellar-sdk'
+import { StellarWalletsKit, Networks as WalletKitNetworks } from '@creit.tech/stellar-wallets-kit'
+import { FreighterModule } from '@creit.tech/stellar-wallets-kit/modules/freighter'
+import { AlbedoModule } from '@creit.tech/stellar-wallets-kit/modules/albedo'
+import { xBullModule } from '@creit.tech/stellar-wallets-kit/modules/xbull'
+import { RabetModule } from '@creit.tech/stellar-wallets-kit/modules/rabet'
 import './App.css'
 
-const CONTRACT_ID = 'CA64JOQVE6HTDF4KE3JSK7OUZBEKTPIC5TQH52PDAM5DHYKBKXKEXE7Q'
-
+const CONTRACT_ID = 'CDRNA7H6DYYP3SI6SLOHV46WJMKCS7WBRBTZ7Y7TQX4V6Y6E5YW6WJWA'
 function generatePaymentId() {
   const timestamp = Date.now()
   const random = Math.floor(Math.random() * 1000)
   return timestamp * 1000 + random
 }
+
+StellarWalletsKit.init({
+  network: WalletKitNetworks.TESTNET,
+  modules: [
+    new FreighterModule(),
+    new AlbedoModule(),
+    new xBullModule(),
+    new RabetModule(),
+  ],
+})
 
 function App() {
   const [walletAddress, setWalletAddress] = useState(null)
@@ -18,6 +31,7 @@ function App() {
   const [recipient, setRecipient] = useState('')
   const [amount, setAmount] = useState('')
   const [txResult, setTxResult] = useState(null)
+  const [lastEventLedger, setLastEventLedger] = useState(null)
 
   async function fetchBalance(address) {
     try {
@@ -35,26 +49,72 @@ function App() {
     }
   }
 
+    useEffect(() => {
+    if (!walletAddress) return
+
+    const rpcServer = new rpc.Server('https://soroban-testnet.stellar.org')
+    let lastCheckedLedger = null
+
+    const interval = setInterval(async () => {
+      try {
+        const latestLedgerResponse = await rpcServer.getLatestLedger()
+        const latestLedger = latestLedgerResponse.sequence
+
+        if (lastCheckedLedger === null) {
+          lastCheckedLedger = latestLedger - 5
+        }
+
+        const eventsResponse = await rpcServer.getEvents({
+          startLedger: lastCheckedLedger,
+          endLedger: latestLedger,
+          filters: [
+            {
+              type: 'contract',
+              contractIds: [CONTRACT_ID],
+            },
+          ],
+          limit: 20,
+        })
+
+        console.log('Poll result:', {
+          lastCheckedLedger,
+          latestLedger,
+          eventsFound: eventsResponse.events.length,
+          events: eventsResponse.events,
+        })
+        
+
+        if (eventsResponse.events.length > 0) {
+          fetchBalance(walletAddress)
+          setLastEventLedger(latestLedger)
+        }
+
+        lastCheckedLedger = latestLedger
+      } catch (err) {
+        console.error('Event polling error:', err)
+      }
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [walletAddress])
+
   async function handleConnect() {
     setError(null)
 
-    const connectionCheck = await isConnected()
-    if (!connectionCheck.isConnected) {
-      setError('Freighter does not seem to be installed. Please check the extension.')
-      return
-    }
+    try {
+      const { address } = await StellarWalletsKit.authModal()
 
-    const accessObj = await requestAccess()
-    if (accessObj.error) {
-      setError('Connection was rejected or an error occurred.')
-      return
+      setWalletAddress(address)
+      await fetchBalance(address)
+    } catch (err) {
+      console.error(err)
+      setError("Wallet connection failed.")
     }
-
-    setWalletAddress(accessObj.address)
-    fetchBalance(accessObj.address)
   }
 
-  function handleDisconnect() {
+
+  async function handleDisconnect() {
+    await StellarWalletsKit.disconnect()
     setWalletAddress(null)
     setBalance(null)
   }
@@ -69,6 +129,12 @@ function App() {
         <div>
           <p>Connected wallet: {walletAddress}</p>
           <p>Balance: {balance ? `${balance} XLM` : 'Loading...'}</p>
+          {lastEventLedger && (
+            <p style={{ fontSize: '0.85em', color: 'gray' }}>
+              Last synced at ledger: {lastEventLedger}
+            </p>
+          )}
+
           <div style={{ marginTop: '20px' }}>
             <h3>Send Payment</h3>
             <input
@@ -152,7 +218,7 @@ function App() {
 
     const xdr = preparedTransaction.toXDR()
 
-    const signedResult = await signTransaction(xdr, {
+    const signedResult = await StellarWalletsKit.signTransaction(xdr, {
       networkPassphrase: Networks.TESTNET,
     })
 
@@ -191,7 +257,7 @@ function App() {
       setError('The contract call failed on the network. Please try again.')
     }
   }
-}
+  }
 }
 
 export default App
