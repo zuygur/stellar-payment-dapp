@@ -1,22 +1,23 @@
 # Stellar Payment dApp
 
-A decentralized application built on the Stellar Testnet that allows users to connect a Freighter wallet, view their XLM balance, and send payments through a deployed Soroban smart contract that tracks payment status.
+A decentralized application built on the Stellar Testnet that allows users to connect a Stellar wallet (Freighter, Albedo, xBull, or Rabet), view their XLM balance, and send payments through a deployed Soroban smart contract that tracks payment status. The app listens for on-chain contract events and updates automatically in real time.
 
-This project was built for the Rise In Stellar Journey to Mastery program (Level 1 - White Belt and Level 2 - Yellow Belt).
+This project was built for the Rise In Stellar Journey to Mastery program (Level 1 - White Belt, Level 2 - Yellow Belt).
 
 ## Features
 
-- Connect and disconnect a Freighter wallet
+- Connect and disconnect using multiple Stellar wallets (Freighter, Albedo, xBull, Rabet) via Stellar Wallets Kit
 - Fetch and display the connected wallet's XLM balance
 - Send XLM payments through a deployed Soroban smart contract
 - Each payment is recorded on-chain with a unique payment ID and a status (`pending` / `completed`)
+- Real-time updates: the app polls the Soroban RPC server for contract events and automatically refreshes the balance when a new payment is detected, without requiring a page reload
 - Clear success or failure feedback for each transaction, including the payment ID and transaction hash
 - Handles multiple distinct error cases: invalid recipient address, invalid amount, and network/contract failures
 
 ## Tech Stack
 
 - React (Vite)
-- @stellar/freighter-api
+- @creit.tech/stellar-wallets-kit (multi-wallet support)
 - @stellar/stellar-sdk
 - Soroban (Stellar smart contracts, written in Rust)
 - Stellar Testnet / Horizon / Soroban RPC
@@ -25,16 +26,23 @@ This project was built for the Rise In Stellar Journey to Mastery program (Level
 
 The `payment-tracker-contract` folder contains a Soroban smart contract with three functions:
 
-- `create_payment` — creates a new payment record with sender, recipient, amount, and a `pending` status
+- `create_payment` — creates a new payment record with sender, recipient, amount, and a `pending` status, and publishes a `PaymentCreated` event using the `#[contractevent]` macro
 - `complete_payment` — updates a payment record's status to `completed`
 - `get_payment` — retrieves a payment record by its ID
 
 **Deployed Contract ID (Testnet):**
 
 ```bash
-CA64JOQVE6HTDF4KE3JSK7OUZBEKTPIC5TQH52PDAM5DHYKBKXKEXE7Q
+CDRNA7H6DYYP3SI6SLOHV46WJMKCS7WBRBTZ7Y7TQX4V6Y6E5YW6WJWA
 ```
-You can verify the contract on [Stellar Expert (Testnet)](https://stellar.expert/explorer/testnet/contract/CA64JOQVE6HTDF4KE3JSK7OUZBEKTPIC5TQH52PDAM5DHYKBKXKEXE7Q).
+You can verify the contract on [Stellar Expert (Testnet)](https://stellar.expert/explorer/testnet/contract/CDRNA7H6DYYP3SI6SLOHV46WJMKCS7WBRBTZ7Y7TQX4V6Y6E5YW6WJWA).
+
+**Example Transaction (Contract Call):**
+
+```
+https://stellar.expert/explorer/testnet/tx/285aa445eb6787348e22981f9799c31a041332a753a4b6e89e92ab6a5720f60d
+
+```
 
 ## Setup Instructions
 
@@ -109,7 +117,17 @@ stellar contract deploy --wasm target/wasm32v1-none/release/hello_world.wasm --s
 ### Freighter Wallet
 ![Freighter wallet](screenshots/freighter%20wallet.png)
 
+### Wallet Options Available
+![Wallet options modal](screenshots/multi-wallet.png)
+
+### Wallet Connected, Balance, and Real-Time Sync
+![Real-time sync](screenshots/real-time-sync.png)
+
+### Error Handling
+![Error handling](screenshots/error-handling.png)
+
 ## Notes
 
 - The recipient account must already exist (funded) on the Testnet for a payment to succeed. New accounts can be funded using [Friendbot](https://friendbot.stellar.org/).
 - Contract calls require higher network fees than simple payments, since they involve on-chain computation.
+- The app checks for new contract events every 5 seconds while a wallet is connected.
