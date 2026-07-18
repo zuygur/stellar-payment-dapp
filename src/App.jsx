@@ -6,13 +6,9 @@ import { AlbedoModule } from '@creit.tech/stellar-wallets-kit/modules/albedo'
 import { xBullModule } from '@creit.tech/stellar-wallets-kit/modules/xbull'
 import { RabetModule } from '@creit.tech/stellar-wallets-kit/modules/rabet'
 import './App.css'
+import { generatePaymentId, isValidRecipient, isValidAmount } from './utils'
 
-const CONTRACT_ID = 'CDRNA7H6DYYP3SI6SLOHV46WJMKCS7WBRBTZ7Y7TQX4V6Y6E5YW6WJWA'
-function generatePaymentId() {
-  const timestamp = Date.now()
-  const random = Math.floor(Math.random() * 1000)
-  return timestamp * 1000 + random
-}
+const CONTRACT_ID = 'CANPSJZKEBKEAROCQMEOF65HNFOAKN3EMWPRNVOC6PXMV7P6OWMS2LSO'
 
 StellarWalletsKit.init({
   network: WalletKitNetworks.TESTNET,
@@ -32,6 +28,7 @@ function App() {
   const [amount, setAmount] = useState('')
   const [txResult, setTxResult] = useState(null)
   const [lastEventLedger, setLastEventLedger] = useState(null)
+  const [isSending, setIsSending] = useState(false)
 
   async function fetchBalance(address) {
     try {
@@ -120,71 +117,71 @@ function App() {
   }
 
   return (
-    <div style={{ padding: '40px', fontFamily: 'sans-serif' }}>
-      <h1>Stellar Payment dApp</h1>
+  <div className="app-container">
+    <h1>Stellar Payment dApp</h1>
 
-      {!walletAddress ? (
-        <button onClick={handleConnect}>Connect Wallet</button>
-      ) : (
-        <div>
-          <p>Connected wallet: {walletAddress}</p>
-          <p>Balance: {balance ? `${balance} XLM` : 'Loading...'}</p>
-          {lastEventLedger && (
-            <p style={{ fontSize: '0.85em', color: 'gray' }}>
-              Last synced at ledger: {lastEventLedger}
+    {!walletAddress ? (
+      <button className="app-button" onClick={handleConnect}>Connect Wallet</button>
+    ) : (
+      <div>
+        <p className="wallet-address">Connected wallet: {walletAddress}</p>
+        <p>Balance: {balance ? `${balance} XLM` : 'Loading...'}</p>
+        {lastEventLedger && (
+          <p style={{ fontSize: '0.85em', color: 'gray' }}>
+            Last synced at ledger: {lastEventLedger}
+          </p>
+        )}
+        <div style={{ marginTop: '20px' }}>
+          <h3>Send Payment</h3>
+          <input
+            className="app-input"
+            type="text"
+            placeholder="Recipient address"
+            value={recipient}
+            onChange={(e) => setRecipient(e.target.value)}
+          />
+          <input
+            className="app-input"
+            type="text"
+            placeholder="Amount (XLM)"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
+          <button className="app-button" onClick={handleSendPayment} disabled={isSending}>
+            {isSending ? 'Sending...' : 'Send Payment'}
+          </button>
+
+          {txResult && txResult.success && (
+            <p style={{ color: 'green' }}>
+              Transaction successful!<br />
+              Payment ID: {txResult.paymentId}<br />
+              Hash: {txResult.hash}
             </p>
           )}
-
-          <div style={{ marginTop: '20px' }}>
-            <h3>Send Payment</h3>
-            <input
-              type="text"
-              placeholder="Recipient address"
-              value={recipient}
-              onChange={(e) => setRecipient(e.target.value)}
-            />
-            <br />
-            <input
-              type="text"
-              placeholder="Amount (XLM)"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-            <br />
-            <button onClick={handleSendPayment}>Send Payment</button>
-
-            {txResult && txResult.success && (
-              <p style={{ color: 'green' }}>
-                Transaction successful!<br />
-                Payment ID: {txResult.paymentId}<br />
-                Hash: {txResult.hash}
-              </p>
-            )}
-            {txResult && !txResult.success && (
-              <p style={{ color: 'red' }}>Transaction failed.</p>
-            )}
+          {txResult && !txResult.success && (
+            <p style={{ color: 'red' }}>Transaction failed.</p>
+          )}
         </div>
-          <button onClick={handleDisconnect}>Disconnect</button>
-        </div>
-      )}
+        <button className="app-button" onClick={handleDisconnect}>Disconnect</button>
+      </div>
+    )}
 
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-    </div>
-  )
+    {error && <p style={{ color: 'red' }}>{error}</p>}
+  </div>
+)
 
   async function handleSendPayment() {
   setError(null)
+  setIsSending(true)
   setTxResult(null)
 
   // Error type 1: invalid recipient address
-  if (!recipient || recipient.length !== 56 || !recipient.startsWith('G')) {
+  if (!isValidRecipient(recipient)) {
     setError('Invalid recipient address. Stellar addresses start with "G" and are 56 characters long.')
     return
   }
 
-  // Error type 2: invalid amount
-  const amountNumber = Number(amount)
-  if (!amount || isNaN(amountNumber) || amountNumber <= 0) {
+  if (!isValidAmount(amount)) {
     setError('Invalid amount. Please enter a number greater than 0.')
     return
   }
@@ -256,6 +253,8 @@ function App() {
     } else {
       setError('The contract call failed on the network. Please try again.')
     }
+  } finally {
+    setIsSending(false)
   }
   }
 }

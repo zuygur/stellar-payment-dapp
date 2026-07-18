@@ -24,6 +24,11 @@ pub struct Contract;
 
 #[contractimpl]
 impl Contract {
+
+    pub fn set_logger(env: Env, logger_contract_id: Address) {
+    env.storage().instance().set(&"logger", &logger_contract_id);
+}
+
     pub fn create_payment(
         env: Env,
         payment_id: u64,
@@ -49,6 +54,18 @@ impl Contract {
             amount,
         }
         .publish(&env);
+
+        let logger_contract_id: Address = env
+            .storage()
+            .instance()
+            .get(&"logger")
+            .expect("logger contract not configured");
+
+        let _: u64 = env.invoke_contract(
+            &logger_contract_id,
+            &soroban_sdk::Symbol::new(&env, "log_payment"),
+            soroban_sdk::vec![&env],
+        );
     }
 
     pub fn complete_payment(env: Env, payment_id: u64) {
