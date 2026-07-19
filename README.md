@@ -190,6 +190,10 @@ This repository uses GitHub Actions to automatically run both frontend and contr
 ### Test Output (Contract + Frontend)
 ![Test output](screenshots/test-output.png)
 
+## Demo Video
+
+[Watch the demo video](https://youtu.be/KoDD8BH3rVk)
+
 ## Notes
 
 - The recipient account must already exist (funded) on the Testnet for a payment to succeed. New accounts can be funded using [Friendbot](https://friendbot.stellar.org/).
