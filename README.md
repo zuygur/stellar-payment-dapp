@@ -185,7 +185,7 @@ This repository uses GitHub Actions to automatically run both frontend and contr
 ![Mobile responsive UI](screenshots/mobile-responsive.png)
 
 ### CI/CD Pipeline Running
-![CI/CD pipeline running](screenshots/ci-cd-pipeline.png)
+![CI/CD pipeline running](screenshots/ci-cd-pipelining.png)
 
 ### Test Output (Contract + Frontend)
 ![Test output](screenshots/test-output.png)
