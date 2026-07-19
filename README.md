@@ -13,6 +13,9 @@ This project was built for the Rise In Stellar Journey to Mastery program (Level
 - Real-time updates: the app polls the Soroban RPC server for contract events and automatically refreshes the balance when a new payment is detected, without requiring a page reload
 - Clear success or failure feedback for each transaction, including the payment ID and transaction hash
 - Handles multiple distinct error cases: invalid recipient address, invalid amount, and network/contract failures
+- Inter-contract communication: the Payment Tracker contract calls a separate Payment Logger contract on every payment
+- Mobile responsive design
+- Automated tests for both the smart contracts and the frontend, run automatically via CI/CD on every push
 
 ## Tech Stack
 
@@ -22,26 +25,47 @@ This project was built for the Rise In Stellar Journey to Mastery program (Level
 - Soroban (Stellar smart contracts, written in Rust)
 - Stellar Testnet / Horizon / Soroban RPC
 
-## Smart Contract
+## Live Demo
 
-The `payment-tracker-contract` folder contains a Soroban smart contract with three functions:
+[https://stellar-payment-dapp-seven.vercel.app/](https://stellar-payment-dapp-seven.vercel.app/)
 
-- `create_payment` — creates a new payment record with sender, recipient, amount, and a `pending` status, and publishes a `PaymentCreated` event using the `#[contractevent]` macro
+## Smart Contracts
+
+This project uses two Soroban smart contracts that communicate with each other (inter-contract communication):
+
+### Payment Tracker Contract
+
+Located in `payment-tracker-contract`. Functions:
+
+- `create_payment` — creates a new payment record with sender, recipient, amount, and a `pending` status. Publishes a `PaymentCreated` event and calls the Payment Logger contract to increment its counter.
 - `complete_payment` — updates a payment record's status to `completed`
 - `get_payment` — retrieves a payment record by its ID
+- `set_logger` — configures the address of the Payment Logger contract
 
 **Deployed Contract ID (Testnet):**
 
 ```bash
-CDRNA7H6DYYP3SI6SLOHV46WJMKCS7WBRBTZ7Y7TQX4V6Y6E5YW6WJWA
+CANPSJZKEBKEAROCQMEOF65HNFOAKN3EMWPRNVOC6PXMV7P6OWMS2LSO
 ```
-You can verify the contract on [Stellar Expert (Testnet)](https://stellar.expert/explorer/testnet/contract/CDRNA7H6DYYP3SI6SLOHV46WJMKCS7WBRBTZ7Y7TQX4V6Y6E5YW6WJWA).
+You can verify the contract on [Stellar Expert (Testnet)](https://stellar.expert/explorer/testnet/contract/CANPSJZKEBKEAROCQMEOF65HNFOAKN3EMWPRNVOC6PXMV7P6OWMS2LSO).
+
+### Payment Logger Contract
+
+Located in `payment-logger-contract`. A simple contract called by the Payment Tracker to demonstrate inter-contract communication. Functions:
+
+- `log_payment` — increments and returns a global payment counter
+- `get_count` — retrieves the current payment counter
+
+**Deployed Contract ID (Testnet):**
+
+```
+CBVXTCH3VJ7TR7LIYELFWC2V3IIGO7FR4QDGTXOWEI3AIEMZV4DUTXVY
+```
 
 **Example Transaction (Contract Call):**
 
 ```
-https://stellar.expert/explorer/testnet/tx/285aa445eb6787348e22981f9799c31a041332a753a4b6e89e92ab6a5720f60d
-
+https://stellar.expert/explorer/testnet/tx/39bd353297187ee2de9dcdddd28b1c98918931e9c75bca75b833bba8310eb60d
 ```
 
 ## Setup Instructions
@@ -76,7 +100,7 @@ npm run dev
 
 6. Make sure the [Freighter wallet extension](https://www.freighter.app/) is installed and set to **Testnet**.
 
-### Smart Contract (optional — already deployed)
+### Smart Contract Deployment (optional — already deployed)
 
 If you want to build or redeploy the contract yourself:
 
@@ -105,6 +129,37 @@ stellar contract build
 ```bash
 stellar contract deploy --wasm target/wasm32v1-none/release/hello_world.wasm --source <your-identity> --network testnet
 ```
+
+6. Deploy the Payment Logger contract the same way, from the `payment-logger-contract` folder.
+
+7. Link the two contracts together:
+
+```bash
+stellar contract invoke --id <payment-tracker-contract-id> --source <your-identity> --network testnet -- set_logger --logger_contract_id <payment-logger-contract-id>
+```
+
+## Testing
+
+### Smart Contract Tests
+
+```
+cd payment-tracker-contract
+cargo test
+```
+
+3 tests covering payment creation, status updates, and error handling for missing records.
+
+### Frontend Tests
+
+```
+npm run test
+```
+
+7 tests covering payment ID generation and input validation logic.
+
+## CI/CD
+
+This repository uses GitHub Actions to automatically run both frontend and contract tests on every push to `main`. See `.github/workflows/ci.yml`.
 
 ## Screenshots
 
