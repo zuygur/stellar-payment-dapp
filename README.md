@@ -181,6 +181,15 @@ This repository uses GitHub Actions to automatically run both frontend and contr
 ### Error Handling
 ![Error handling](screenshots/error-handling.png)
 
+### Mobile Responsive UI
+![Mobile responsive UI](screenshots/mobile-responsive.png)
+
+### CI/CD Pipeline Running
+![CI/CD pipeline running](screenshots/ci-cd-pipeline.png)
+
+### Test Output (Contract + Frontend)
+![Test output](screenshots/test-output.png)
+
 ## Notes
 
 - The recipient account must already exist (funded) on the Testnet for a payment to succeed. New accounts can be funded using [Friendbot](https://friendbot.stellar.org/).
